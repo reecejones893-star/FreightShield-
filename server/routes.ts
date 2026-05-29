@@ -137,6 +137,24 @@ export function registerRoutes(httpServer: Server, app: Express) {
     res.json({ publishableKey: pk });
   });
 
+  // Debug: check what env vars are loaded (remove after testing)
+  app.get("/api/debug/env", (req, res) => {
+    const fs = require("fs");
+    let secretFileExists = false;
+    let secretFileContent = "";
+    try {
+      secretFileContent = fs.readFileSync("/etc/secrets/.env", "utf8").substring(0, 50);
+      secretFileExists = true;
+    } catch(e) {}
+    res.json({
+      hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
+      hasStripePublishable: !!process.env.STRIPE_PUBLISHABLE_KEY,
+      secretFileExists,
+      secretFileContent,
+      cwd: process.cwd(),
+    });
+  });
+
   // Create a lookup order and payment intent
   app.post("/api/lookup/create", async (req, res) => {
     try {
