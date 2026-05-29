@@ -15,7 +15,8 @@ export default function LookupPage() {
 
   const lookupMutation = useMutation({
     mutationFn: async (data: { dotNumber: string; email: string }) => {
-      return await apiRequest("POST", "/api/lookup/create", data);
+      const res = await apiRequest("POST", "/api/lookup/create", data);
+      return await res.json();
     },
     onSuccess: async (data: any) => {
       if (data.demoMode && data.report) {

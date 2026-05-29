@@ -51,7 +51,8 @@ export default function ReportPage() {
         window.location.hash = `/report/${id}`;
       }
 
-      return await apiRequest("GET", `/api/lookup/${id}`);
+      const res = await apiRequest("GET", `/api/lookup/${id}`);
+      return await res.json();
     },
     enabled: !!id,
     refetchInterval: (data: any) => {
