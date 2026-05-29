@@ -1,8 +1,16 @@
 import dotenv from "dotenv";
 import path from "node:path";
-// Load .env from project root (dev) or Render secret file path (production)
+import fs from "node:fs";
+// Load .env from project root first
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
-dotenv.config({ path: "/etc/secrets/.env" });
+// Then manually parse Render secret file and inject into process.env
+try {
+  const secretEnv = fs.readFileSync("/etc/secrets/.env", "utf8");
+  secretEnv.split("\n").forEach(line => {
+    const [key, ...rest] = line.split("=");
+    if (key && rest.length) process.env[key.trim()] = rest.join("=").trim();
+  });
+} catch (_) {}
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
