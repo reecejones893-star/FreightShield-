@@ -1,89 +1,66 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
-import axios from "axios";
+import { chromium } from "playwright";
 
-// FMCSA lookup using public SAFER API
+// FMCSA lookup using headless browser (required — SAFER is JS-rendered)
 async function lookupCarrier(dotNumber: string) {
+  let browser = null;
   try {
-    // Use FMCSA SAFER web service
     const url = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dotNumber}`;
-    const response = await axios.get(url, {
-      timeout: 10000,
-      headers: { "User-Agent": "FreightShield/1.0" }
+
+    browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+    await page.waitForTimeout(2000);
+
+    // Use DOM-based extraction — FMCSA is JS-rendered, regex on raw HTML is unreliable
+    const fmcsaData = await page.evaluate(() => {
+      const result: Record<string, string> = {};
+      const rows = document.querySelectorAll("tr");
+      rows.forEach((row) => {
+        const labelEl = row.querySelector("a.querylabel");
+        const valueEl = row.querySelector("td.queryfield");
+        if (labelEl && valueEl) {
+          const key = labelEl.textContent?.replace(":", "").trim() || "";
+          const val = valueEl.textContent?.replace(/\u00a0/g, " ").trim() || "";
+          if (key) result[key] = val;
+        }
+      });
+      // Grab OOS rates from the inspections table (uses th, not td label)
+      const allThs = Array.from(document.querySelectorAll("th"));
+      const oosHeader = allThs.find(th => th.textContent?.trim() === "Out of Service %");
+      if (oosHeader) {
+        const oosRow = oosHeader.closest("tr");
+        const oosTds = Array.from(oosRow?.querySelectorAll("td") || []);
+        if (oosTds[0]) result["Vehicle OOS %"] = oosTds[0].textContent?.trim() || "0%";
+        if (oosTds[1]) result["Driver OOS %"] = oosTds[1].textContent?.trim() || "0%";
+      }
+      return result;
     });
 
-    const html = response.data as string;
+    await browser.close();
+    browser = null;
 
-    // Parse key fields from HTML response
-    const extract = (label: string, html: string): string => {
-      const regex = new RegExp(`${label}[^<]*<[^>]+>([^<]+)<`, "i");
-      const match = html.match(regex);
-      return match ? match[1].trim() : "Not Available";
-    };
+    const name = fmcsaData["Legal Name"] || "Not Found";
+    const usdotStatus = fmcsaData["USDOT Status"] || "Unknown";
+    const safetyRating = fmcsaData["Rating"] || "None Assigned";
+    const mcNumber = fmcsaData["MC/MX/FF Number(s)"] || "Not Available";
+    const powerUnits = fmcsaData["Power Units"] || "Not Available";
+    const drivers = fmcsaData["Drivers"] || "Not Available";
+    const address = fmcsaData["Physical Address"]?.replace(/\s+/g, " ") || "Not Available";
+    const crashes = fmcsaData["Crashes"] || "0";
+    const operatingStatus = fmcsaData["Operating Authority Status"] || "";
 
-    // Check for inactive record
-    if (html.includes("RECORD INACTIVE") || html.includes("is INACTIVE in the SAFER")) {
-      return {
-        dotNumber,
-        name: "Record Inactive",
-        usdotStatus: "INACTIVE",
-        safetyRating: "None Assigned",
-        mcNumber: "Not Available",
-        powerUnits: "Not Available",
-        drivers: "Not Available",
-        address: "Not Available",
-        crashes: "0",
-        oosVehicle: "0%",
-        oosDriver: "0%",
-        recommendation: "NO-GO",
-        reason: "Carrier authority is INACTIVE in the FMCSA SAFER database — not legally authorized to haul freight",
-        pulledAt: new Date().toISOString(),
-      };
-    }
-
-    // Extract carrier name
-    const nameMatch = html.match(/Legal Name:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const name = nameMatch ? nameMatch[1].trim() : "Not Found";
-
-    // Extract USDOT status
-    const statusMatch = html.match(/USDOT Status:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const usdotStatus = statusMatch ? statusMatch[1].trim() : "Unknown";
-
-    // Extract safety rating
-    const ratingMatch = html.match(/Safety Rating:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const safetyRating = ratingMatch ? ratingMatch[1].trim() : "None Assigned";
-
-    // Extract MC number
-    const mcMatch = html.match(/Docket Number:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const mcNumber = mcMatch ? mcMatch[1].trim() : "Not Available";
-
-    // Extract power units
-    const unitsMatch = html.match(/Power Units:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const powerUnits = unitsMatch ? unitsMatch[1].trim() : "Not Available";
-
-    // Extract drivers
-    const driversMatch = html.match(/Drivers:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const drivers = driversMatch ? driversMatch[1].trim() : "Not Available";
-
-    // Extract address
-    const addrMatch = html.match(/Physical Address:<\/td>\s*<td[^>]*>([^<]+)</i);
-    const address = addrMatch ? addrMatch[1].trim() : "Not Available";
-
-    // Extract crashes
-    const crashMatch = html.match(/Total Crashes[^<]*<[^>]+>(\d+)/i);
-    const crashes = crashMatch ? crashMatch[1] : "0";
-
-    // Extract OOS rate vehicle
-    const oosVehicleMatch = html.match(/Vehicle OOS Rate[^<]*<[^>]+>([\d.]+)%/i);
-    const oosVehicle = oosVehicleMatch ? oosVehicleMatch[1] + "%" : "0%";
-
-    // Extract OOS rate driver
-    const oosDriverMatch = html.match(/Driver OOS Rate[^<]*<[^>]+>([\d.]+)%/i);
-    const oosDriver = oosDriverMatch ? oosDriverMatch[1] + "%" : "0%";
+    // Parse OOS rates — they appear as "X%" in the inspections table
+    const oosVehicleRaw = fmcsaData["Vehicle OOS %"] || "0%";
+    const oosDriverRaw = fmcsaData["Driver OOS %"] || "0%";
+    const oosVehicle = oosVehicleRaw.includes("%") ? oosVehicleRaw : oosVehicleRaw + "%";
+    const oosDriver = oosDriverRaw.includes("%") ? oosDriverRaw : oosDriverRaw + "%";
 
     // Determine recommendation
     const isInactive = usdotStatus.toLowerCase().includes("inactive") || usdotStatus.toLowerCase().includes("out-of-service");
+    const isNotAuthorized = operatingStatus.toLowerCase().includes("not authorized") || operatingStatus.toLowerCase().includes("revoked");
     const isUnknown = usdotStatus === "Unknown" || name === "Not Found" || name === "Not Available";
     const isBadRating = safetyRating.toLowerCase().includes("unsatisfactory") || safetyRating.toLowerCase().includes("conditional");
     const isHighCrashRisk = Number(crashes) >= 5;
@@ -99,6 +76,9 @@ async function lookupCarrier(dotNumber: string) {
     } else if (isInactive) {
       recommendation = "NO-GO";
       reason = "Carrier authority is INACTIVE — not legally authorized to haul freight";
+    } else if (isNotAuthorized) {
+      recommendation = "NO-GO";
+      reason = "Carrier operating authority is NOT AUTHORIZED — not legally cleared to haul freight";
     } else if (isBadRating) {
       recommendation = "NO-GO";
       reason = `Safety rating is ${safetyRating} — carrier does not meet minimum safety standards`;
@@ -131,6 +111,7 @@ async function lookupCarrier(dotNumber: string) {
       pulledAt: new Date().toISOString(),
     };
   } catch (err) {
+    if (browser) { try { await browser.close(); } catch (_) {} }
     // Fallback: return a partial report with the DOT number
     return {
       dotNumber,
