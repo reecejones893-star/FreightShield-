@@ -83,14 +83,36 @@ async function lookupCarrier(dotNumber: string) {
     const oosDriver = oosDriverMatch ? oosDriverMatch[1] + "%" : "0%";
 
     // Determine recommendation
-    const isInactive = usdotStatus.toLowerCase().includes("inactive") || usdotStatus.toLowerCase().includes("out");
+    const isInactive = usdotStatus.toLowerCase().includes("inactive") || usdotStatus.toLowerCase().includes("out-of-service");
+    const isUnknown = usdotStatus === "Unknown" || name === "Not Found" || name === "Not Available";
     const isBadRating = safetyRating.toLowerCase().includes("unsatisfactory") || safetyRating.toLowerCase().includes("conditional");
-    const recommendation = isInactive || isBadRating ? "NO-GO" : "CLEAR";
-    const reason = isInactive
-      ? "Carrier authority is INACTIVE — not legally authorized to haul freight"
-      : isBadRating
-      ? `Safety rating is ${safetyRating} — elevated risk carrier`
-      : "No major red flags detected in FMCSA records";
+    const isHighCrashRisk = Number(crashes) >= 5;
+    const isHighVehicleOOS = parseFloat(oosVehicle) > 20;
+    const isHighDriverOOS = parseFloat(oosDriver) > 5;
+
+    let recommendation: string;
+    let reason: string;
+
+    if (isUnknown) {
+      recommendation = "NO-GO";
+      reason = "DOT number could not be verified in the FMCSA SAFER database — do not book until carrier is confirmed";
+    } else if (isInactive) {
+      recommendation = "NO-GO";
+      reason = "Carrier authority is INACTIVE — not legally authorized to haul freight";
+    } else if (isBadRating) {
+      recommendation = "NO-GO";
+      reason = `Safety rating is ${safetyRating} — carrier does not meet minimum safety standards`;
+    } else if (isHighVehicleOOS || isHighDriverOOS || isHighCrashRisk) {
+      recommendation = "REVIEW";
+      reason = `Elevated risk indicators: ${[
+        isHighCrashRisk ? `${crashes} crashes in 24 months` : "",
+        isHighVehicleOOS ? `Vehicle OOS rate ${oosVehicle} (threshold: 20%)` : "",
+        isHighDriverOOS ? `Driver OOS rate ${oosDriver} (threshold: 5%)` : "",
+      ].filter(Boolean).join("; ")}. Verify insurance and safety program before booking.`;
+    } else {
+      recommendation = "CLEAR";
+      reason = "Active authority, acceptable safety rating, and no major red flags in FMCSA records";
+    }
 
     return {
       dotNumber,
