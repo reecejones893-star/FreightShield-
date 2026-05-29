@@ -40,9 +40,18 @@ export default function PricingPage() {
       monthlyPrice: "$49",
       annualPrice: "$399",
       annualMonthly: "$33",
-      lookups: "10 lookups/month",
-      features: ["10 carrier reports per month", "Full FMCSA safety data", "Go/No-Go recommendation", "Email delivery"],
-      cta: "Get Started",
+      lookups: "10 checks per month",
+      badge: "",
+      tagline: "Perfect if you're booking a few loads a week",
+      features: [
+        "10 carrier safety checks every month",
+        "Full FMCSA report on every carrier",
+        "Instant Go / No-Go recommendation",
+        "Know if a carrier is active or shut down",
+        "See crash history & safety violations",
+        "Report sent to your email instantly",
+      ],
+      cta: "Start for $49/mo",
       highlight: false,
     },
     {
@@ -51,9 +60,19 @@ export default function PricingPage() {
       monthlyPrice: "$99",
       annualPrice: "$899",
       annualMonthly: "$75",
-      lookups: "30 lookups/month",
-      features: ["30 carrier reports per month", "Full FMCSA safety data", "Go/No-Go recommendation", "Email delivery", "Priority support"],
-      cta: "Go Pro",
+      lookups: "30 checks per month",
+      badge: "Most Popular",
+      tagline: "Best for brokers moving freight daily",
+      features: [
+        "30 carrier safety checks every month",
+        "Full FMCSA report on every carrier",
+        "Instant Go / No-Go recommendation",
+        "Know if a carrier is active or shut down",
+        "See crash history & safety violations",
+        "Report sent to your email instantly",
+        "Priority support",
+      ],
+      cta: "Go Pro for $99/mo",
       highlight: true,
     },
     {
@@ -62,9 +81,19 @@ export default function PricingPage() {
       monthlyPrice: "$199",
       annualPrice: "$1,799",
       annualMonthly: "$150",
-      lookups: "Unlimited lookups",
-      features: ["Unlimited carrier reports", "Full FMCSA safety data", "Go/No-Go recommendation", "Email delivery", "Priority support", "API access (coming soon)"],
-      cta: "Go Unlimited",
+      lookups: "Unlimited checks",
+      badge: "",
+      tagline: "For high-volume brokers who vet every load",
+      features: [
+        "Run as many checks as you need — no limits",
+        "Full FMCSA report on every carrier",
+        "Instant Go / No-Go recommendation",
+        "Know if a carrier is active or shut down",
+        "See crash history & safety violations",
+        "Report sent to your email instantly",
+        "Priority support",
+      ],
+      cta: "Go Unlimited for $199/mo",
       highlight: false,
     },
   ];
@@ -90,10 +119,10 @@ export default function PricingPage() {
           Simple Pricing
         </div>
         <h1 className="text-4xl md:text-5xl font-display font-black text-foreground mb-4">
-          Choose Your Plan
+          Protect Every Load You Book
         </h1>
         <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-          Start with 1 free lookup. Upgrade anytime to run more checks and protect your freight business.
+          Your first carrier check is free — no card needed. When you're ready to vet more carriers, pick the plan that fits how many loads you move.
         </p>
 
         {/* Billing toggle */}
@@ -141,16 +170,21 @@ export default function PricingPage() {
               )}
               <div className="mb-6">
                 <h2 className="text-xl font-display font-black text-foreground mb-1">{plan.name}</h2>
-                <p className="text-sm text-muted-foreground mb-4">{plan.lookups}</p>
+                <p className="text-sm text-primary font-semibold mb-1">{plan.lookups}</p>
+                <p className="text-xs text-muted-foreground mb-4">{plan.tagline}</p>
                 <div className="flex items-end gap-1">
                   <span className="text-4xl font-display font-black text-foreground">
                     {billing === "monthly" ? plan.monthlyPrice : plan.annualMonthly}
                   </span>
                   <span className="text-muted-foreground text-sm mb-1">/mo</span>
                 </div>
-                {billing === "annual" && (
+                {billing === "annual" ? (
                   <p className="text-xs text-primary font-semibold mt-1">
-                    {plan.annualPrice} billed annually
+                    Billed as {plan.annualPrice}/year — save vs monthly
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Or save with <button onClick={() => setBilling("annual")} className="text-primary underline">annual billing</button>
                   </p>
                 )}
               </div>
