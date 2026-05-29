@@ -1,4 +1,8 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "node:path";
+// Load .env from project root (dev) or Render secret file path (production)
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+dotenv.config({ path: "/etc/secrets/.env" });
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
