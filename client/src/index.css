@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 8% 8%;
+    --foreground: 36 10% 88%;
+    --card: 30 8% 11%;
+    --card-foreground: 36 10% 88%;
+    --popover: 30 8% 11%;
+    --popover-foreground: 36 10% 88%;
+    --primary: 24 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 6% 18%;
+    --secondary-foreground: 36 10% 88%;
+    --muted: 30 6% 18%;
+    --muted-foreground: 36 5% 55%;
+    --accent: 24 100% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 5% 22%;
+    --input: 30 5% 22%;
+    --ring: 24 100% 40%;
+    --radius: 0.5rem;
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 24 100% 40%;
+  }
+
+  .dark {
+    --background: 30 8% 8%;
+    --foreground: 36 10% 88%;
+    --card: 30 8% 11%;
+    --card-foreground: 36 10% 88%;
+    --popover: 30 8% 11%;
+    --popover-foreground: 36 10% 88%;
+    --primary: 24 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 6% 18%;
+    --secondary-foreground: 36 10% 88%;
+    --muted: 30 6% 18%;
+    --muted-foreground: 36 5% 55%;
+    --accent: 24 100% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 5% 22%;
+    --input: 30 5% 22%;
+    --ring: 24 100% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+  }
+}
