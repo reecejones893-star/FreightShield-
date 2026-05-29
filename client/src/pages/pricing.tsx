@@ -2,19 +2,22 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Shield, CheckCircle, Zap, Star } from "lucide-react";
+import { Shield, CheckCircle, Zap, Star, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PRICES = {
   starter: { monthly: "price_1TcPrm1FcQS0y6rVjHNL4xUd", annual: "price_1TcPrm1FcQS0y6rV6VEX5weL" },
   broker_pro: { monthly: "price_1TcPrm1FcQS0y6rVkYMD2Id3", annual: "price_1TcPrm1FcQS0y6rVsbN1JkrC" },
   unlimited: { monthly: "price_1TcPrm1FcQS0y6rVESLj2EgW", annual: "price_1TcPrn1FcQS0y6rVdJsu5fcV" },
+  team: { monthly: "price_1TcUdg1FcQS0y6rV7gd9x9sT", annual: "price_1TcUjd1FcQS0y6rV1RzrQn6L" },
+  enterprise: { monthly: "price_1TcUqM1FcQS0y6rVlUyAAhM6", annual: "price_1TcUsl1FcQS0y6rV5TlaJ3cx" },
 };
 
 export default function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [email, setEmail] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [view, setView] = useState<"individual" | "team">("individual");
   const { toast } = useToast();
 
   const subscribeMutation = useMutation({
@@ -33,7 +36,7 @@ export default function PricingPage() {
     },
   });
 
-  const plans = [
+  const individualPlans = [
     {
       key: "starter",
       name: "Starter",
@@ -98,6 +101,54 @@ export default function PricingPage() {
     },
   ];
 
+  const teamPlans = [
+    {
+      key: "team",
+      name: "Team",
+      monthlyPrice: "$149",
+      annualPrice: "$1,349",
+      annualMonthly: "$112",
+      lookups: "5 users · Unlimited checks",
+      badge: "Best for Brokerages",
+      tagline: "Your whole team vetting carriers — one flat price",
+      features: [
+        "Up to 5 broker seats on one account",
+        "Unlimited carrier safety checks across the team",
+        "Full FMCSA report on every carrier",
+        "Instant Go / No-Go recommendation",
+        "Shared team dashboard — see all lookups",
+        "Reports sent to each user's email instantly",
+        "Priority support",
+      ],
+      cta: "Get Team Plan — $149/mo",
+      highlight: true,
+    },
+    {
+      key: "enterprise",
+      name: "Enterprise",
+      monthlyPrice: "$299",
+      annualPrice: "$2,699",
+      annualMonthly: "$225",
+      lookups: "Unlimited users · Unlimited checks",
+      badge: "",
+      tagline: "For large brokerages with no limits at all",
+      features: [
+        "Unlimited broker seats — whole office covered",
+        "Unlimited carrier safety checks",
+        "Full FMCSA report on every carrier",
+        "Instant Go / No-Go recommendation",
+        "Shared team dashboard — see all lookups",
+        "Reports sent to each user's email instantly",
+        "Dedicated account support",
+        "Custom onboarding for your team",
+      ],
+      cta: "Go Enterprise — $299/mo",
+      highlight: false,
+    },
+  ];
+
+  const activePlans = view === "individual" ? individualPlans : teamPlans;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-6 py-4">
@@ -122,8 +173,33 @@ export default function PricingPage() {
           Protect Every Load You Book
         </h1>
         <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-          Your first carrier check is free — no card needed. When you're ready to vet more carriers, pick the plan that fits how many loads you move.
+          Your first carrier check is free — no card needed. When you're ready to vet more carriers, pick the plan that fits how you operate.
         </p>
+
+        {/* Individual vs Team toggle */}
+        <div className="inline-flex items-center gap-3 bg-muted rounded-full p-1 mb-6">
+          <button
+            onClick={() => setView("individual")}
+            className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${view === "individual" ? "bg-background text-foreground shadow" : "text-muted-foreground"}`}
+          >
+            Individual Broker
+          </button>
+          <button
+            onClick={() => setView("team")}
+            className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${view === "team" ? "bg-background text-foreground shadow" : "text-muted-foreground"}`}
+          >
+            <Users className="w-4 h-4" />
+            Brokerage / Team
+          </button>
+        </div>
+
+        {view === "team" && (
+          <div className="max-w-2xl mx-auto mb-8 p-4 rounded-xl bg-primary/5 border border-primary/20">
+            <p className="text-sm text-foreground font-semibold">
+              Have a team of brokers? Stop paying per person. One team plan covers your whole operation at a flat monthly rate.
+            </p>
+          </div>
+        )}
 
         {/* Billing toggle */}
         <div className="inline-flex items-center gap-3 bg-muted rounded-full p-1 mb-10">
@@ -137,7 +213,7 @@ export default function PricingPage() {
             onClick={() => setBilling("annual")}
             className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${billing === "annual" ? "bg-background text-foreground shadow" : "text-muted-foreground"}`}
           >
-            Annual <span className="text-primary font-bold ml-1">Save 30%</span>
+            Annual <span className="text-primary font-bold ml-1">Save 25%</span>
           </button>
         </div>
 
@@ -153,8 +229,8 @@ export default function PricingPage() {
         </div>
 
         {/* Plans */}
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
+        <div className={`max-w-5xl mx-auto grid gap-6 ${view === "team" ? "md:grid-cols-2 max-w-3xl" : "md:grid-cols-3"}`}>
+          {activePlans.map((plan) => (
             <div
               key={plan.key}
               className={`relative rounded-2xl border p-8 text-left flex flex-col ${
@@ -165,7 +241,7 @@ export default function PricingPage() {
             >
               {plan.highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1">
-                  <Star className="w-3 h-3" /> Most Popular
+                  <Star className="w-3 h-3" /> {plan.badge}
                 </div>
               )}
               <div className="mb-6">
