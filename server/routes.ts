@@ -137,6 +137,129 @@ export function registerRoutes(httpServer: Server, app: Express) {
     res.json({ publishableKey: pk });
   });
 
+  // Check subscriber status by email
+  app.get("/api/subscriber/:email", (req, res) => {
+    const email = decodeURIComponent(req.params.email);
+    const subscriber = storage.getSubscriberByEmail(email);
+    if (!subscriber) {
+      return res.json({ plan: "none", lookupsUsed: 0, lookupsLimit: 1, hasFreeLookup: false });
+    }
+    const hasFreeLookup = subscriber.plan === "free" && subscriber.lookupsUsed < 1;
+    const canLookup =
+      subscriber.plan === "unlimited" ||
+      (subscriber.plan !== "free" && subscriber.lookupsUsed < subscriber.lookupsLimit) ||
+      hasFreeLookup;
+    res.json({
+      plan: subscriber.plan,
+      lookupsUsed: subscriber.lookupsUsed,
+      lookupsLimit: subscriber.lookupsLimit,
+      hasFreeLookup,
+      canLookup,
+      status: subscriber.status,
+    });
+  });
+
+  // Create subscription checkout
+  app.post("/api/subscribe", async (req, res) => {
+    try {
+      const { email, priceId } = req.body;
+      if (!email || !priceId) return res.status(400).json({ error: "Email and plan required" });
+
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey) return res.status(400).json({ error: "Stripe not configured" });
+
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeKey);
+
+      const host = req.headers.origin || `https://${req.headers.host}`;
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "subscription",
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${host}/#/subscribed?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${host}/#/pricing`,
+        customer_email: email,
+        metadata: { email },
+      });
+
+      res.json({ checkoutUrl: session.url });
+    } catch (err: any) {
+      console.error("Subscribe error:", err);
+      res.status(500).json({ error: err.message || "Server error" });
+    }
+  });
+
+  // Confirm subscription after checkout
+  app.post("/api/subscribe/confirm", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) return res.status(400).json({ error: "Session ID required" });
+
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey) return res.status(400).json({ error: "Stripe not configured" });
+
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeKey);
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["subscription"],
+      });
+
+      if (session.payment_status !== "paid" && session.status !== "complete") {
+        return res.status(402).json({ error: "Payment not confirmed" });
+      }
+
+      const email = (session.metadata?.email || session.customer_email) as string;
+      const sub = session.subscription as any;
+
+      // Determine plan from price
+      const priceId = sub?.items?.data?.[0]?.price?.id;
+      const planMap: Record<string, { plan: string; limit: number }> = {
+        "price_1TcPrm1FcQS0y6rVjHNL4xUd": { plan: "starter", limit: 10 },
+        "price_1TcPrm1FcQS0y6rV6VEX5weL": { plan: "starter", limit: 10 },
+        "price_1TcPrm1FcQS0y6rVkYMD2Id3": { plan: "broker_pro", limit: 30 },
+        "price_1TcPrm1FcQS0y6rVsbN1JkrC": { plan: "broker_pro", limit: 30 },
+        "price_1TcPrm1FcQS0y6rVESLj2EgW": { plan: "unlimited", limit: -1 },
+        "price_1TcPrn1FcQS0y6rVdJsu5fcV": { plan: "unlimited", limit: -1 },
+      };
+      const planInfo = planMap[priceId] || { plan: "starter", limit: 10 };
+
+      const existing = storage.getSubscriberByEmail(email);
+      if (existing) {
+        storage.updateSubscriber(existing.id, {
+          plan: planInfo.plan,
+          stripeSubscriptionId: sub?.id,
+          stripeCustomerId: session.customer as string,
+          lookupsLimit: planInfo.limit,
+          lookupsUsed: 0,
+          billingInterval: sub?.items?.data?.[0]?.price?.recurring?.interval,
+          status: "active",
+          periodStart: sub?.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
+          periodEnd: sub?.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+        });
+      } else {
+        storage.createSubscriber({
+          email,
+          plan: planInfo.plan,
+          stripeSubscriptionId: sub?.id,
+          stripeCustomerId: session.customer as string,
+          lookupsLimit: planInfo.limit,
+          lookupsUsed: 0,
+          billingInterval: sub?.items?.data?.[0]?.price?.recurring?.interval,
+          status: "active",
+          periodStart: sub?.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
+          periodEnd: sub?.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      res.json({ success: true, plan: planInfo.plan });
+    } catch (err: any) {
+      console.error("Subscribe confirm error:", err);
+      res.status(500).json({ error: err.message || "Server error" });
+    }
+  });
+
   // Create a lookup order and payment intent
   app.post("/api/lookup/create", async (req, res) => {
     try {
@@ -147,26 +270,66 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
       const stripeKey = process.env.STRIPE_SECRET_KEY;
 
-      // Create lookup record
-      const lookup = storage.createLookup({
-        dotNumber: dotNumber.trim(),
-        email: email.trim(),
-        paymentStatus: stripeKey ? "pending" : "paid", // skip payment if no Stripe key
-        createdAt: new Date().toISOString(),
-      });
-
       if (!stripeKey) {
-        // No Stripe — run lookup immediately (demo mode)
+        // Demo mode
+        const lookup = storage.createLookup({
+          dotNumber: dotNumber.trim(),
+          email: email.trim(),
+          paymentStatus: "paid",
+          createdAt: new Date().toISOString(),
+        });
         const report = await lookupCarrier(dotNumber.trim());
         storage.updateLookupReport(lookup.id, JSON.stringify(report));
         return res.json({ lookupId: lookup.id, demoMode: true, report });
       }
 
-      // Create Stripe Checkout Session
+      // Check if subscriber has lookups available
+      let subscriber = storage.getSubscriberByEmail(email.trim());
+
+      // New user — give free lookup
+      if (!subscriber) {
+        subscriber = storage.createSubscriber({
+          email: email.trim(),
+          plan: "free",
+          lookupsUsed: 0,
+          lookupsLimit: 1,
+          status: "active",
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      const isUnlimited = subscriber.plan === "unlimited";
+      const hasLookupsLeft = isUnlimited || subscriber.lookupsUsed < subscriber.lookupsLimit;
+
+      if (hasLookupsLeft) {
+        // Run free or subscription lookup
+        const lookup = storage.createLookup({
+          dotNumber: dotNumber.trim(),
+          email: email.trim(),
+          paymentStatus: subscriber.plan === "free" ? "free" : "subscription",
+          createdAt: new Date().toISOString(),
+        });
+        storage.incrementLookupsUsed(subscriber.id);
+        const report = await lookupCarrier(dotNumber.trim());
+        storage.updateLookupReport(lookup.id, JSON.stringify(report));
+        return res.json({
+          lookupId: lookup.id,
+          report,
+          isFree: subscriber.plan === "free",
+          plan: subscriber.plan,
+        });
+      }
+
+      // No lookups left — require payment
+      const lookup = storage.createLookup({
+        dotNumber: dotNumber.trim(),
+        email: email.trim(),
+        paymentStatus: "pending",
+        createdAt: new Date().toISOString(),
+      });
+
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(stripeKey);
-
-      // Build the base URL from the request
       const host = req.headers.origin || `https://${req.headers.host}`;
       const successUrl = `${host}/#/report/${lookup.id}?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${host}/#/`;
@@ -180,7 +343,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
               name: "FreightShield Carrier Safety Report",
               description: `Instant FMCSA report for DOT #${dotNumber}`,
             },
-            unit_amount: 1200, // $12.00
+            unit_amount: 1200,
           },
           quantity: 1,
         }],
@@ -196,6 +359,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
       res.json({
         lookupId: lookup.id,
         checkoutUrl: session.url,
+        needsUpgrade: subscriber.plan === "free",
       });
     } catch (err: any) {
       console.error("Create lookup error:", err);

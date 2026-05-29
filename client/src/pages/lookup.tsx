@@ -19,11 +19,12 @@ export default function LookupPage() {
       return await res.json();
     },
     onSuccess: async (data: any) => {
-      if (data.demoMode && data.report) {
-        window.location.hash = `/report/${data.lookupId}`;
-      } else if (data.checkoutUrl) {
-        // Redirect to Stripe hosted checkout — works on all devices
+      if (data.checkoutUrl) {
+        // Redirect to Stripe hosted checkout
         window.location.href = data.checkoutUrl;
+      } else if (data.report && data.lookupId) {
+        // Free or subscription lookup — report ready immediately
+        window.location.hash = `/report/${data.lookupId}`;
       } else {
         window.location.hash = `/report/${data.lookupId}`;
       }
@@ -130,6 +131,7 @@ export default function LookupPage() {
                 )}
               </Button>
               <p className="text-xs text-center text-muted-foreground">Secure payment via Stripe. Report delivered instantly.</p>
+              <p className="text-xs text-center text-muted-foreground">First lookup free · <a href="/#/pricing" className="text-primary font-semibold underline underline-offset-2">View subscription plans</a></p>
             </form>
           </CardContent>
         </Card>
