@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, AlertTriangle, CheckCircle, ArrowLeft, Truck, FileText, Clock } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, ArrowLeft, Truck, FileText, Clock, Star, Share2 } from "lucide-react";
 
 interface CarrierReport {
   dotNumber: string;
@@ -211,8 +211,52 @@ export default function ReportPage() {
           </CardContent>
         </Card>
 
+        {/* Share button */}
+        <Button
+          variant="outline"
+          className="w-full h-12 font-bold border-border"
+          onClick={() => {
+            const text = `FreightShield Report — DOT #${report.dotNumber} — ${report.name}\n${report.recommendation}: ${report.reason}\n\nCheck any carrier at freightshieldconsulting.com`;
+            if (navigator.share) {
+              navigator.share({ title: "FreightShield Carrier Report", text });
+            } else {
+              navigator.clipboard.writeText(text);
+              alert("Report copied to clipboard!");
+            }
+          }}
+        >
+          <Share2 className="w-4 h-4 mr-2" />
+          Share This Report
+        </Button>
+
+        {/* Upgrade banner */}
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Star className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-display font-black text-foreground">Want to run more checks?</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            You used your free lookup. Subscribe to vet every carrier you book — starting at $49/month for 10 checks.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              onClick={() => { window.location.hash = "/pricing"; }}
+              className="bg-primary hover:bg-primary/90 text-white font-bold px-8"
+            >
+              View Plans — From $49/mo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/")}
+              className="border-border font-semibold"
+            >
+              Run Another — $12
+            </Button>
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 pb-6">
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
             <span>Data pulled: {new Date(report.pulledAt).toLocaleString()}</span>
@@ -222,14 +266,6 @@ export default function ReportPage() {
             <span>Source: FMCSA SAFER Database</span>
           </div>
         </div>
-
-        <Button
-          onClick={() => navigate("/")}
-          className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold"
-          data-testid="button-new-lookup"
-        >
-          Run Another Lookup — $10
-        </Button>
       </div>
     </div>
   );
