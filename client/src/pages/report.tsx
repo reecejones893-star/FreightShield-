@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, AlertTriangle, CheckCircle, ArrowLeft, Truck, FileText, Clock, Star, Share2 } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, ArrowLeft, Truck, FileText, Clock, Star, Share2, ExternalLink } from "lucide-react";
 
 interface CarrierReport {
   dotNumber: string;
@@ -208,6 +208,31 @@ export default function ReportPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Insurance Check */}
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg font-display font-bold">
+              <FileText className="w-5 h-5 text-primary" />
+              Insurance Verification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              FMCSA insurance records require direct verification. Tap below to instantly open this carrier's official insurance filing — confirm active coverage before booking.
+            </p>
+            <a
+              href={`https://li-public.fmcsa.dot.gov/LIVIEW/pkg_carrquery.prc_carrlist?n_dotno=${report.dotNumber.replace(/[^0-9]/g, "")}&s_prefix=MC&n_docketno=${report.mcNumber.replace(/[^0-9]/g, "")}&s_legalname=&s_dbaname=&s_state=`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button className="w-full h-12 font-bold bg-primary hover:bg-primary/90 text-white">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Check Insurance on FMCSA
+              </Button>
+            </a>
           </CardContent>
         </Card>
 
