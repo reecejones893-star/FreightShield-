@@ -96,6 +96,17 @@ async function lookupCarrier(dotNumber: string) {
     const crashTotal = crashNumbers.length > 0 ? crashNumbers[crashNumbers.length - 1].replace(/<[^>]+>/g, "") : "0";
     const crashes = crashTotal;
 
+    // Inspection counts — from the "Inspections" TH row in the inspection table
+    // Pattern: >Inspections</TH> followed by TD cells: vehicle, driver, hazmat, IEP
+    const inspectionRowMatch = html.match(/>Inspections<\/TH>[\s\S]{0,600}?<TD[^>]*class="queryfield"[^>]*>(\d+)<\/TD>[\s\S]{0,200}?<TD[^>]*class="queryfield"[^>]*>(\d+)<\/TD>/i);
+    const vehicleInspections = inspectionRowMatch ? inspectionRowMatch[1] : "0";
+    const driverInspections = inspectionRowMatch ? inspectionRowMatch[2] : "0";
+
+    // OOS counts — from the "Out of Service" TH row (not "Out of Service %")
+    const oosCountRowMatch = html.match(/>Out of Service<\/TH>[\s\S]{0,600}?<TD[^>]*class="queryfield"[^>]*>(\d+)<\/TD>[\s\S]{0,200}?<TD[^>]*class="queryfield"[^>]*>(\d+)<\/TD>/i);
+    const vehicleOOSCount = oosCountRowMatch ? oosCountRowMatch[1] : "0";
+    const driverOOSCount = oosCountRowMatch ? oosCountRowMatch[2] : "0";
+
     // OOS rates — first two percentages after "Out of Service %" header are vehicle then driver
     const oosSection = html.match(/Out of Service %[\s\S]{0,800}/i)?.[0] || "";
     const oosNumbers = oosSection.match(/(\d+\.?\d*)%/g) || [];
@@ -150,6 +161,10 @@ async function lookupCarrier(dotNumber: string) {
       crashes,
       oosVehicle,
       oosDriver,
+      vehicleInspections,
+      driverInspections,
+      vehicleOOSCount,
+      driverOOSCount,
       mcsDate: mcsDateRaw,
       yearsInService,
       recommendation,

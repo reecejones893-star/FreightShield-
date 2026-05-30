@@ -18,6 +18,10 @@ interface CarrierReport {
   crashes: string;
   oosVehicle: string;
   oosDriver: string;
+  vehicleInspections: string;
+  driverInspections: string;
+  vehicleOOSCount: string;
+  driverOOSCount: string;
   mcsDate: string;
   yearsInService: string;
   recommendation: string;
@@ -203,6 +207,10 @@ export default function ReportPage() {
               {[
                 { label: "Safety Rating", value: report.safetyRating, warn: report.safetyRating.toLowerCase().includes("unsatisfactory") || report.safetyRating.toLowerCase().includes("conditional") },
                 { label: "Crashes (24mo)", value: report.crashes, warn: Number(report.crashes) > 0 },
+                { label: "Vehicle Inspections", value: report.vehicleInspections || "0" },
+                { label: "Driver Inspections", value: report.driverInspections || "0" },
+                { label: "Vehicle OOS Count", value: report.vehicleOOSCount || "0", warn: Number(report.vehicleOOSCount) > 0 },
+                { label: "Driver OOS Count", value: report.driverOOSCount || "0", warn: Number(report.driverOOSCount) > 0 },
                 { label: "Vehicle OOS Rate", value: report.oosVehicle, warn: parseFloat(report.oosVehicle) > 20 },
                 { label: "Driver OOS Rate", value: report.oosDriver, warn: parseFloat(report.oosDriver) > 5 },
               ].map((item) => (
