@@ -18,6 +18,7 @@ const PRICES = {
 
 export default function LookupPage() {
   const [dotNumber, setDotNumber] = useState("");
+  const [lookupType, setLookupType] = useState<"USDOT" | "MC">("USDOT");
   const [email, setEmail] = useState("");
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [planView, setPlanView] = useState<"individual" | "team">("individual");
@@ -62,7 +63,8 @@ export default function LookupPage() {
     e.preventDefault();
     if (!dotNumber.trim()) { toast({ title: "Enter a DOT or MC number", variant: "destructive" }); return; }
     if (!email.trim() || !email.includes("@")) { toast({ title: "Enter a valid email", variant: "destructive" }); return; }
-    lookupMutation.mutate({ dotNumber: dotNumber.trim(), email: email.trim() });
+    const finalNumber = lookupType === "MC" ? `MC-${dotNumber.trim().replace(/^MC-?/i, "")}` : dotNumber.trim();
+    lookupMutation.mutate({ dotNumber: finalNumber, email: email.trim() });
   };
 
   const individualPlans = [
@@ -173,17 +175,45 @@ export default function LookupPage() {
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="dot" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">DOT or MC Number</Label>
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lookup Type</Label>
+                <div className="flex rounded-lg overflow-hidden border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setLookupType("USDOT")}
+                    className={`flex-1 py-2.5 text-sm font-bold transition-colors ${
+                      lookupType === "USDOT"
+                        ? "bg-primary text-white"
+                        : "bg-background text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    USDOT Number
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLookupType("MC")}
+                    className={`flex-1 py-2.5 text-sm font-bold transition-colors ${
+                      lookupType === "MC"
+                        ? "bg-primary text-white"
+                        : "bg-background text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    MC Number
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dot" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  {lookupType === "USDOT" ? "USDOT Number" : "MC Number"}
+                </Label>
                 <Input
                   id="dot"
                   data-testid="input-dot"
                   type="text"
-                  placeholder="e.g. 3586828 or MC-1213494"
+                  placeholder={lookupType === "USDOT" ? "e.g. 3586828" : "e.g. 1213494"}
                   value={dotNumber}
-                  onChange={(e) => setDotNumber(e.target.value)}
+                  onChange={(e) => setDotNumber(e.target.value.replace(/^MC-?/i, ""))}
                   className="h-12 text-base bg-background border-border focus:border-primary"
                 />
-                <p className="text-xs text-muted-foreground">Enter a USDOT number or MC number — we handle both automatically.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Email (report sent here)</Label>
