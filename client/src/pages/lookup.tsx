@@ -211,7 +211,7 @@ export default function LookupPage() {
                   type="text"
                   placeholder={lookupType === "USDOT" ? "e.g. 3586828" : "e.g. 1213494"}
                   value={dotNumber}
-                  onChange={(e) => setDotNumber(e.target.value.replace(/^MC-?/i, ""))}
+                  onChange={(e) => setDotNumber(e.target.value.replace(/^MC-?/i, "").replace(/[,\s.]/g, ""))}
                   className="h-12 text-base bg-background border-border focus:border-primary"
                 />
               </div>

@@ -6,11 +6,12 @@ import axios from "axios";
 // FMCSA lookup — supports both USDOT and MC numbers
 async function lookupCarrier(dotNumber: string) {
   try {
-    // Detect if user entered an MC number (starts with MC or is prefixed)
-    const cleaned = dotNumber.trim().toUpperCase().replace(/^MC-?/, "");
-    const isMC = dotNumber.trim().toUpperCase().startsWith("MC") || Number(cleaned) !== Number(dotNumber.trim());
+    // Clean input — strip spaces, commas, periods, dashes (except MC- prefix detection)
+    const rawInput = dotNumber.trim().replace(/[,\s.]+/g, "");
+    const cleaned = rawInput.toUpperCase().replace(/^MC-?/, "");
+    const isMC = rawInput.toUpperCase().startsWith("MC");
     const queryParam = isMC ? "MC_MX" : "USDOT";
-    const queryString = isMC ? cleaned : dotNumber.trim();
+    const queryString = cleaned;
     const url = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=${queryParam}&query_string=${queryString}`;
 
     const response = await axios.get(url, {
