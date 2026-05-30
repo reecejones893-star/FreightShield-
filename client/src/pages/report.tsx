@@ -18,6 +18,8 @@ interface CarrierReport {
   crashes: string;
   oosVehicle: string;
   oosDriver: string;
+  mcsDate: string;
+  yearsInService: string;
   recommendation: string;
   reason: string;
   pulledAt: string;
@@ -172,6 +174,8 @@ export default function ReportPage() {
                 { label: "Address", value: report.address },
                 { label: "Power Units", value: report.powerUnits },
                 { label: "Drivers", value: report.drivers },
+                { label: "Time in Service", value: report.yearsInService || "Unknown" },
+                { label: "MCS-150 Filed", value: report.mcsDate || "Not Available" },
               ].map((item) => (
                 <div key={item.label}>
                   <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-0.5">{item.label}</p>

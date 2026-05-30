@@ -58,6 +58,20 @@ async function lookupCarrier(dotNumber: string) {
     const safetyRating = extractField("Safety Rating:") || "None Assigned";
     const powerUnits = extractField("Power Units:") || "Not Available";
     const address = extractField("Physical Address:") || "Not Available";
+
+    // MCS-150 Form Date — tells us when carrier last filed, used to calculate time in service
+    const mcsDateRaw = extractField("MCS-150 Form Date:") || "Not Available";
+    // Calculate years in service from MCS-150 date (earliest known filing = start of operation)
+    let yearsInService = "Unknown";
+    if (mcsDateRaw !== "Not Available") {
+      const filed = new Date(mcsDateRaw);
+      if (!isNaN(filed.getTime())) {
+        const now = new Date();
+        const years = Math.floor((now.getTime() - filed.getTime()) / (1000 * 60 * 60 * 24 * 365));
+        const months = Math.floor((now.getTime() - filed.getTime()) / (1000 * 60 * 60 * 24 * 30)) % 12;
+        yearsInService = years > 0 ? `${years} yr${years !== 1 ? "s" : ""}${months > 0 ? ` ${months} mo` : ""}` : `${months} month${months !== 1 ? "s" : ""}`;
+      }
+    }
     // Drivers value is inside <B> tag, not queryfield td
     const driversSection = html.match(/Drivers:<\/A><\/TH>[\s\S]{0,300}?<B>(\d+)/i);
     const drivers = driversSection ? driversSection[1] : "Not Available";
@@ -136,6 +150,8 @@ async function lookupCarrier(dotNumber: string) {
       crashes,
       oosVehicle,
       oosDriver,
+      mcsDate: mcsDateRaw,
+      yearsInService,
       recommendation,
       reason,
       pulledAt: new Date().toISOString(),
