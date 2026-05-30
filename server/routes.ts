@@ -3,10 +3,15 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import axios from "axios";
 
-// FMCSA lookup — uses axios with browser headers (SAFER returns full HTML with proper UA)
+// FMCSA lookup — supports both USDOT and MC numbers
 async function lookupCarrier(dotNumber: string) {
   try {
-    const url = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dotNumber}`;
+    // Detect if user entered an MC number (starts with MC or is prefixed)
+    const cleaned = dotNumber.trim().toUpperCase().replace(/^MC-?/, "");
+    const isMC = dotNumber.trim().toUpperCase().startsWith("MC") || Number(cleaned) !== Number(dotNumber.trim());
+    const queryParam = isMC ? "MC_MX" : "USDOT";
+    const queryString = isMC ? cleaned : dotNumber.trim();
+    const url = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=${queryParam}&query_string=${queryString}`;
 
     const response = await axios.get(url, {
       timeout: 15000,

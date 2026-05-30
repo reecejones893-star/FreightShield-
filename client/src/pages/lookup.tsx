@@ -60,7 +60,7 @@ export default function LookupPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dotNumber.trim()) { toast({ title: "Enter a DOT number", variant: "destructive" }); return; }
+    if (!dotNumber.trim()) { toast({ title: "Enter a DOT or MC number", variant: "destructive" }); return; }
     if (!email.trim() || !email.includes("@")) { toast({ title: "Enter a valid email", variant: "destructive" }); return; }
     lookupMutation.mutate({ dotNumber: dotNumber.trim(), email: email.trim() });
   };
@@ -173,16 +173,17 @@ export default function LookupPage() {
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="dot" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">USDOT Number</Label>
+                <Label htmlFor="dot" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">DOT or MC Number</Label>
                 <Input
                   id="dot"
                   data-testid="input-dot"
                   type="text"
-                  placeholder="e.g. 1234567"
+                  placeholder="e.g. 3586828 or MC-1213494"
                   value={dotNumber}
                   onChange={(e) => setDotNumber(e.target.value)}
                   className="h-12 text-base bg-background border-border focus:border-primary"
                 />
+                <p className="text-xs text-muted-foreground">Enter a USDOT number or MC number — we handle both automatically.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Email (report sent here)</Label>
