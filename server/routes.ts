@@ -492,6 +492,59 @@ export function registerRoutes(httpServer: Server, app: Express) {
     res.json({ lookup, report });
   });
 
+  // --- Reviews ---
+
+  // Submit carrier review
+  app.post("/api/review/carrier", (req, res) => {
+    try {
+      const { dotNumber, email, stars, comment } = req.body;
+      if (!dotNumber || !email || !stars || stars < 1 || stars > 5) {
+        return res.status(400).json({ error: "dotNumber, email, and stars (1-5) required" });
+      }
+      storage.addCarrierReview(dotNumber.trim(), email.trim(), Number(stars), comment || "");
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Get carrier reviews + rating
+  app.get("/api/review/carrier/:dot", (req, res) => {
+    try {
+      const dot = req.params.dot.trim();
+      const reviews = storage.getCarrierReviews(dot);
+      const rating = storage.getCarrierRating(dot);
+      res.json({ reviews, rating });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Submit app review
+  app.post("/api/review/app", (req, res) => {
+    try {
+      const { email, stars, comment } = req.body;
+      if (!email || !stars || stars < 1 || stars > 5) {
+        return res.status(400).json({ error: "email and stars (1-5) required" });
+      }
+      storage.addAppReview(email.trim(), Number(stars), comment || "");
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Get app reviews + aggregate rating
+  app.get("/api/reviews/app", (req, res) => {
+    try {
+      const reviews = storage.getAppReviews();
+      const rating = storage.getAppRating();
+      res.json({ reviews, rating });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Stripe webhook
   app.post("/api/webhook/stripe", async (req, res) => {
     try {

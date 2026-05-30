@@ -18,6 +18,23 @@ sqlite.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS carrier_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dot_number TEXT NOT NULL,
+    email TEXT NOT NULL,
+    stars INTEGER NOT NULL,
+    comment TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS app_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    stars INTEGER NOT NULL,
+    comment TEXT,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS subscribers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
@@ -102,6 +119,46 @@ export class Storage implements IStorage {
       .where(eq(subscribers.id, id))
       .returning()
       .get();
+  }
+
+  // Carrier reviews
+  addCarrierReview(dotNumber: string, email: string, stars: number, comment: string) {
+    return sqlite.prepare(
+      `INSERT INTO carrier_reviews (dot_number, email, stars, comment, created_at) VALUES (?, ?, ?, ?, ?)`
+    ).run(dotNumber, email, stars, comment || "", new Date().toISOString());
+  }
+
+  getCarrierReviews(dotNumber: string) {
+    return sqlite.prepare(
+      `SELECT stars, comment, created_at FROM carrier_reviews WHERE dot_number = ? ORDER BY created_at DESC LIMIT 50`
+    ).all(dotNumber) as { stars: number; comment: string; created_at: string }[];
+  }
+
+  getCarrierRating(dotNumber: string): { avg: number; count: number } {
+    const row = sqlite.prepare(
+      `SELECT AVG(stars) as avg, COUNT(*) as count FROM carrier_reviews WHERE dot_number = ?`
+    ).get(dotNumber) as { avg: number; count: number };
+    return { avg: Math.round((row.avg || 0) * 10) / 10, count: row.count || 0 };
+  }
+
+  // App reviews
+  addAppReview(email: string, stars: number, comment: string) {
+    return sqlite.prepare(
+      `INSERT INTO app_reviews (email, stars, comment, created_at) VALUES (?, ?, ?, ?)`
+    ).run(email, stars, comment || "", new Date().toISOString());
+  }
+
+  getAppReviews() {
+    return sqlite.prepare(
+      `SELECT stars, comment, created_at FROM app_reviews ORDER BY created_at DESC LIMIT 20`
+    ).all() as { stars: number; comment: string; created_at: string }[];
+  }
+
+  getAppRating(): { avg: number; count: number } {
+    const row = sqlite.prepare(
+      `SELECT AVG(stars) as avg, COUNT(*) as count FROM app_reviews`
+    ).get() as { avg: number; count: number };
+    return { avg: Math.round((row.avg || 0) * 10) / 10, count: row.count || 0 };
   }
 }
 

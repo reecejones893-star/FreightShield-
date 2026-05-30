@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Shield, CheckCircle, Zap, Star, Users } from "lucide-react";
@@ -12,6 +12,52 @@ const PRICES = {
   team: { monthly: "price_1TcUdg1FcQS0y6rV7gd9x9sT", annual: "price_1TcUjd1FcQS0y6rV1RzrQn6L" },
   enterprise: { monthly: "price_1TcUqM1FcQS0y6rVlUyAAhM6", annual: "price_1TcUsl1FcQS0y6rV5TlaJ3cx" },
 };
+
+function AppReviews() {
+  const { data } = useQuery({
+    queryKey: ["/api/reviews/app"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/reviews/app");
+      return await res.json();
+    },
+  });
+
+  const rating = data?.rating || { avg: 0, count: 0 };
+  const reviews: { stars: number; comment: string; created_at: string }[] = (data?.reviews || []).filter((r: any) => r.comment?.trim());
+
+  if (rating.count === 0) return null;
+
+  return (
+    <section className="px-6 py-16 border-t border-border">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            {[1,2,3,4,5].map((n) => (
+              <Star key={n} className={`w-6 h-6 ${rating.avg >= n ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`} />
+            ))}
+          </div>
+          <p className="text-3xl font-display font-black text-foreground">{rating.avg.toFixed(1)} out of 5</p>
+          <p className="text-sm text-muted-foreground mt-1">Based on {rating.count} verified broker review{rating.count !== 1 ? "s" : ""}</p>
+        </div>
+        {reviews.length > 0 && (
+          <div className="grid md:grid-cols-2 gap-4">
+            {reviews.slice(0, 6).map((r, i) => (
+              <div key={i} className="rounded-2xl border border-border bg-card p-5 space-y-2">
+                <div className="flex gap-0.5">
+                  {[1,2,3,4,5].map((n) => (
+                    <Star key={n} className={`w-4 h-4 ${r.stars >= n ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`} />
+                  ))}
+                </div>
+                <p className="text-sm text-foreground/90 leading-relaxed">"{r.comment}"</p>
+                <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
@@ -304,6 +350,9 @@ export default function PricingPage() {
           </a>
         </div>
       </section>
+
+      {/* Social proof — app reviews */}
+      <AppReviews />
 
       <footer className="border-t border-border px-6 py-5 text-center text-xs text-muted-foreground">
         © 2026 FreightShield — Fargo, ND. Data sourced from FMCSA SAFER database.
